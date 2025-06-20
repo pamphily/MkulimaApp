@@ -1,0 +1,59 @@
+{
+  "name": "sts-client-api",
+  "author": "Enock K. Samuel <enocrunk@gmail.com>",
+  "license": "MIT",
+  "description": "A simple API for managing clients using Elysia and Prisma",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prisma": "^5.21.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lakwetu-tz/sts-client-api.git"
+  },
+  "homepage": "https://github.com/lakwetu-tz/sts-client-api#readme",
+  "bugs": {
+    "url": "https://github.com/lakwetu-tz/sts-client-api/issues"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "bun --watch run server/index.ts",
+    "deploy": "sudo git add . && sudo git commit -m 'martin and giana' && sudo git push -u origin dog",
+    "build": "bun build server/index.ts",
+    "start": "bun run server/index.ts & serve -s build",
+    "prisma:generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@elysiajs/bearer": "^1.1.2",
+    "@elysiajs/cookie": "^0.8.0",
+    "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/jwt": "^1.1.1",
+    "@elysiajs/static": "^1.1.1",
+    "@elysiajs/swagger": "^1.1.5",
+    "@grotto/logysia": "^0.1.6",
+    "@prisma/client": "^5.21.1",
+    "@prisma/extension-accelerate": "^1.2.2",
+    "@types/jsonwebtoken": "^9.0.7",
+    "elysia": "^1.1.23",
+    "jsonwebtoken": "^9.0.2",
+    "node-forge": "^1.3.1",
+    "nodemailer": "^6.9.16",
+    "serve": "^14.2.4",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.1"
+  }
+}

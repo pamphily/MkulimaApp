@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Authentications {
+  token      String   @id
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model User {
+  id         String   @id
+  email      String   @unique
+  phone      String   @default("0")
+  role       String   @default("USER")
+  full_name  String
+  password   String
+  isVerified Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  auditLogs logs[]
+}
+
+
+model logs {
+  id        Int      @id @default(autoincrement())
+  action    String
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  user    User   @relation(fields: [user_id], references: [id])
+  user_id String
+}
+
