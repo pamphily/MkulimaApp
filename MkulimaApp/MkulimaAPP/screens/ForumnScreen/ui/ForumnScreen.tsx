@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+// ForumScreen.tsx
+
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,47 +10,122 @@ import {
   TextInput,
   SafeAreaView,
   Modal,
+  ToastAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HeaderMenu from '../../../components/HeaderComponent';
-
-const mockPosts = [
-  {
-    id: '1',
-    title: 'How to prevent maize diseases?',
-    content: 'Looking for ways to prevent common diseases in maize.',
-    replies: [
-      { id: 'r1', user: 'John', text: 'Use crop rotation and resistant varieties.' },
-      { id: 'r2', user: 'Anna', text: 'Apply fungicides at early stages.' },
-    ],
-  },
-  {
-    id: '2',
-    title: 'What is the best fertilizer for tomatoes?',
-    content: 'Need advice on tomato fertilization.',
-    replies: [{ id: 'r3', user: 'Paul', text: 'NPK 20-20-20 is great early on.' }],
-  },
-];
+import API_BASE from '../../../api/api';
+import { getUserId } from '../../../services/UserService';
 
 const ForumScreen = () => {
+  const [posts, setPosts] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
-  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
-  const [replyInputs, setReplyInputs] = useState<{ [key: string]: string }>({});
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [replyInputs, setReplyInputs] = useState({});
+  const [expandedPostId, setExpandedPostId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const toggleReplies = (postId: string) => {
-    setExpandedPostId(expandedPostId === postId ? null : postId);
+  useEffect(() => {
+    fetchPosts();
+    const interval = setInterval(fetchPosts, 10000); // Auto-refresh every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/api/forum/posts`);
+      const data = await res.json();
+      setPosts(data);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      ToastAndroid.show('⚠️ Failed to load posts', ToastAndroid.SHORT);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReplyChange = (postId: string, text: string) => {
+  const handleAddPost = async () => {
+    if (!title || !content) {
+      return ToastAndroid.show('⚠️ All fields are required', ToastAndroid.SHORT);
+    }
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_BASE}/api/forum/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, userId }),
+      });
+      const newPost = await res.json();
+      setPosts((prev) => [newPost, ...prev]);
+      setTitle('');
+      setContent('');
+      setModalVisible(false);
+      ToastAndroid.show('✅ Post created!', ToastAndroid.SHORT);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      ToastAndroid.show('❌ Failed to create post', ToastAndroid.SHORT);
+    }
+  };
+
+  const handleReplyChange = (postId, text) => {
     setReplyInputs((prev) => ({ ...prev, [postId]: text }));
   };
 
-  const handleAddReply = (postId: string) => {
+  const handleAddReply = async (postId) => {
     const replyText = replyInputs[postId];
     if (!replyText) return;
-    // Here you'd send to API and update state
-    alert(`Replied to post ${postId}: ${replyText}`);
-    handleReplyChange(postId, '');
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: replyText, userId }),
+      });
+      const newReply = await res.json();
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId ? { ...post, replies: [...(post.replies || []), newReply] } : post
+        )
+      );
+      setReplyInputs((prev) => ({ ...prev, [postId]: '' }));
+      ToastAndroid.show('💬 Reply sent', ToastAndroid.SHORT);
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      ToastAndroid.show('❌ Failed to send reply', ToastAndroid.SHORT);
+    }
+  };
+
+  const toggleReplies = (postId) => {
+    setExpandedPostId(expandedPostId === postId ? null : postId);
+  };
+
+  const handleLike = async (postId) => {
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const result = await res.json();
+      ToastAndroid.show(result.liked ? '❤️ Liked' : '💔 Unliked', ToastAndroid.SHORT);
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId ? { ...post, likes: result.likeCount } : post
+        )
+      );
+    } catch (error) {
+      console.error('Error liking post:', error);
+      ToastAndroid.show('❌ Failed to like post', ToastAndroid.SHORT);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
   return (
@@ -59,61 +136,101 @@ const ForumScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity style={styles.newPostButton} onPress={() => setModalVisible(true)}>
-          <Text style={styles.newPostButtonText}>+ New Post</Text>
-        </TouchableOpacity>
-
-        {mockPosts.map((post) => (
-          <View key={post.id} style={styles.postCard}>
-            <Text style={styles.postTitle}>{post.title}</Text>
-            <Text style={styles.postContent}>{post.content}</Text>
-
-            <TouchableOpacity onPress={() => toggleReplies(post.id)}>
-              <Text style={styles.replyToggle}>
-                {expandedPostId === post.id
-                  ? 'Hide Replies'
-                  : `${post.replies.length} ${post.replies.length === 1 ? 'Reply' : 'Replies'}`}
+        {loading ? (
+          <ActivityIndicator size="large" color="#19551B" />
+        ) : (
+          posts.map((post) => (
+            <View key={post.id} style={styles.postCard}>
+              <Text style={styles.postTitle}>{post.title}</Text>
+              <Text style={styles.postContent}>{post.content}</Text>
+              <Text style={styles.postMeta}>
+                By {post.user_name} • {formatDate(post.created_at)}
               </Text>
-            </TouchableOpacity>
 
-            {expandedPostId === post.id && (
-              <View style={styles.repliesSection}>
-                {post.replies.map((reply) => (
-                  <View key={reply.id} style={styles.replyBox}>
-                    <Text style={styles.replyUser}>{reply.user}:</Text>
-                    <Text style={styles.replyText}>{reply.text}</Text>
-                  </View>
-                ))}
+              <View style={styles.actionsRow}>
+                <TouchableOpacity onPress={() => handleLike(post.id)} style={styles.iconBtn}>
+                  <Ionicons name="heart-outline" size={18} color="#19551B" />
+                  <Text style={styles.iconLabel}>{post.likes || 0} Likes</Text>
+                </TouchableOpacity>
 
-                <View style={styles.replyInputSection}>
-                  <TextInput
-                    placeholder="Write a reply..."
-                    style={styles.replyInput}
-                    value={replyInputs[post.id] || ''}
-                    onChangeText={(text) => handleReplyChange(post.id, text)}
-                  />
-                  <TouchableOpacity
-                    style={styles.sendButton}
-                    onPress={() => handleAddReply(post.id)}
-                  >
-                    <Ionicons name="send" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity onPress={() => toggleReplies(post.id)} style={styles.iconBtn}>
+                  <Ionicons name="chatbubble-outline" size={18} color="#19551B" />
+                  <Text style={styles.iconLabel}>
+                    {expandedPostId === post.id ? 'Hide Replies' : `${post.replies?.length || 0} Replies`}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
-        ))}
+
+              {expandedPostId === post.id && (
+                <View style={styles.repliesSection}>
+                  {post.replies?.map((reply) => (
+                    <View key={reply.id} style={styles.replyBox}>
+                      <Text style={styles.replyUser}>
+                        {reply.user_name} • {formatDate(reply.created_at)}
+                      </Text>
+                      <Text style={styles.replyText}>{reply.content}</Text>
+                    </View>
+                  ))}
+
+                  <View style={styles.replyInputSection}>
+                    <TextInput
+                      placeholder="Write a reply..."
+                      style={styles.replyInput}
+                      value={replyInputs[post.id] || ''}
+                      onChangeText={(text) => handleReplyChange(post.id, text)}
+                    />
+                    <TouchableOpacity
+                      style={styles.sendButton}
+                      onPress={() => handleAddReply(post.id)}
+                    >
+                      <Ionicons name="send" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          ))
+        )}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.floatingButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
 
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Create New Post</Text>
-            <TextInput placeholder="Title" style={styles.modalInput} />
-            <TextInput placeholder="Content" multiline style={styles.modalInputLarge} />
-            <TouchableOpacity style={styles.modalButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalButtonText}>Post</Text>
-            </TouchableOpacity>
+            <TextInput
+              placeholder="Title"
+              style={styles.modalInput}
+              value={title}
+              onChangeText={setTitle}
+            />
+            <TextInput
+              placeholder="Content"
+              multiline
+              style={styles.modalInputLarge}
+              value={content}
+              onChangeText={setContent}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#19551B' }]}
+                onPress={handleAddPost}
+              >
+                <Text style={styles.modalButtonText}>Post</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#888' }]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -124,13 +241,8 @@ const ForumScreen = () => {
 export default ForumScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F7FBF1',
-  },
-  container: {
-    padding: 16,
-  },
+  safeArea: { flex: 1, backgroundColor: '#F7FBF1' },
+  container: { padding: 16, paddingBottom: 100 },
   header: {
     padding: 16,
     backgroundColor: '#F7FBF1',
@@ -138,59 +250,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 22,
-    color: '#1BB582',
-    fontWeight: 'bold',
-  },
-  newPostButton: {
-    backgroundColor: '#19551B',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  newPostButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+  headerTitle: { fontSize: 22, color: '#1BB582', fontWeight: 'bold' },
   postCard: {
     backgroundColor: '#f1f7e9',
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
-  postTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#19551B',
-  },
-  postContent: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#333',
-  },
-  replyToggle: {
+  postTitle: { fontSize: 18, fontWeight: 'bold', color: '#19551B' },
+  postContent: { marginTop: 4, fontSize: 14, color: '#333' },
+  postMeta: { fontSize: 12, color: '#555', marginTop: 6 },
+  actionsRow: {
+    flexDirection: 'row',
     marginTop: 8,
-    color: '#19551B',
-    fontWeight: '600',
+    justifyContent: 'flex-start',
+    gap: 20,
   },
+  iconBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconLabel: { fontSize: 13, color: '#19551B' },
   repliesSection: {
     marginTop: 10,
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 10,
   },
-  replyBox: {
-    marginBottom: 8,
-  },
-  replyUser: {
-    fontWeight: '600',
-    color: '#19551B',
-  },
-  replyText: {
-    color: '#444',
-  },
+  replyBox: { marginBottom: 8 },
+  replyUser: { fontWeight: '600', color: '#19551B', fontSize: 13 },
+  replyText: { color: '#444' },
   replyInputSection: {
     flexDirection: 'row',
     marginTop: 10,
@@ -209,6 +295,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#19551B',
     padding: 10,
     borderRadius: 6,
+  },
+  floatingButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 30,
+    backgroundColor: '#19551B',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
   },
   modalOverlay: {
     flex: 1,
@@ -243,8 +341,13 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
   modalButton: {
-    backgroundColor: '#19551B',
+    flex: 1,
     padding: 10,
     borderRadius: 6,
   },

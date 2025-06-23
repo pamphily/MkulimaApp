@@ -1,42 +1,66 @@
-// // AuthProvider.tsx
+// AuthProvider.tsx
 
-import React, { createContext, PropsWithChildren, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, PropsWithChildren } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthData = {
-    token: string | null;
-    // id: string | null;
+  token: string | null;
+  name?: string;
+  email?: string;
+  id?: number;
 };
 
 type AuthContextType = {
-    authData: AuthData;
-    setAuthData: (data: AuthData) => void;
-    clearAuthData: () => void;
+  authData: AuthData;
+  setAuthData: (data: AuthData) => void;
+  clearAuthData: () => void;
+  isLoading: boolean;
 };
 
-export const AuthContext = createContext<AuthContextType>({ 
-    authData: { token: null },
-    setAuthData: () => {},
-    clearAuthData: () => {},});
+export const AuthContext = createContext<AuthContextType>({
+  authData: { token: null },
+  setAuthData: () => {},
+  clearAuthData: () => {},
+  isLoading: true,
+});
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider: React.FC<PropsWithChildren> = ({ children }: any) => {
+export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const [authData, setAuthDataState] = useState<AuthData>({ token: null });
+  const [isLoading, setIsLoading] = useState(true);
 
-    const [authData, setAuthDataState] = useState<AuthData>({ token: null });
+  const setAuthData = async (data: AuthData) => {
+    setAuthDataState(data);
+    await AsyncStorage.setItem('user', JSON.stringify(data)); // Save user session
+  };
 
-    const setAuthData = (data: AuthData) => {
-        setAuthDataState(data);
-        
-    };
+  const clearAuthData = async () => {
+    setAuthDataState({ token: null });
+    await AsyncStorage.removeItem('user'); // Clear session
+  };
 
-    const clearAuthData = () => {
-        setAuthDataState({ token: null });
-    };
+  const loadStoredUser = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user');
+      if (stored) {
+        const userData = JSON.parse(stored);
+        setAuthDataState(userData);
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    } finally {
+      setIsLoading(false); // App is ready
+    }
+  };
 
-    const value = { authData, setAuthData, clearAuthData };
-    console.log(authData)
+  useEffect(() => {
+    loadStoredUser();
+  }, []);
 
-    return <AuthContext.Provider value={value}>
-        {children}
-    </AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ authData, setAuthData, clearAuthData, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

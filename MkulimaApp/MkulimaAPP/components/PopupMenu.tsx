@@ -19,6 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthProvider'; // Adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,16 +30,15 @@ type Props = {
 
 const PopupMenu: React.FC<Props> = ({ onClose }) => {
   const navigation = useNavigation();
+  const { clearAuthData } = useAuth(); // 👈 Get logout from context
   const translateX = useSharedValue(width);
 
-  // Open animation
   useEffect(() => {
     translateX.value = withTiming(width / 2, {
       duration: 300,
       easing: Easing.out(Easing.exp),
     });
 
-    // Auto-dismiss after 3 seconds
     const timeout = setTimeout(() => {
       translateX.value = withTiming(width, { duration: 300 }, () => {
         runOnJS(onClose)();
@@ -47,12 +48,9 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
     return () => clearTimeout(timeout);
   }, []);
 
-  // Swipe left to open (already open, swipe right to close)
   const gestureHandler = useAnimatedGestureHandler({
     onActive: (event) => {
-      if (event.translationX > 0) {
-        translateX.value = width / 2 + event.translationX;
-      } else if (event.translationX < 0) {
+      if (event.translationX !== 0) {
         translateX.value = width / 2 + event.translationX;
       }
     },
@@ -76,19 +74,25 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
     navigation.navigate('Profile');
   };
 
-  const handleLogout = () => {
-    onClose();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('user'); // Clear user data
+      clearAuthData(); // 👈 Clear auth context state
+      onClose();
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); // Reset nav stack
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
   };
 
   return (
     <View style={StyleSheet.absoluteFillObject}>
-      {/* Background Blur and Tap to Close */}
+      {/* Background Blur */}
       <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </BlurView>
 
-      {/* Slide-in container with gesture */}
+      {/* Slide-in menu */}
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.menuContainer, rSlideStyle]}>
           <View style={styles.menuContent}>
