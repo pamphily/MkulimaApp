@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider } from "./context/AuthProvider";
 import { CartProvider } from "./context/CartProvider";
 import { EducationProvider } from "./context/EducationProvider";
+import SarufiChatbox from "react-sarufi-chatbox";
 
 export default function App() {
   return (

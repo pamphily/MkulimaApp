@@ -1,5 +1,3 @@
-// ForumScreen.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -29,7 +27,7 @@ const ForumScreen = () => {
 
   useEffect(() => {
     fetchPosts();
-    const interval = setInterval(fetchPosts, 10000); // Auto-refresh every 10s
+    const interval = setInterval(fetchPosts, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,110 +128,116 @@ const ForumScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Forum</Text>
-        <HeaderMenu />
-      </View>
+      <View style={styles.wrapper}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Forum</Text>
+          <HeaderMenu />
+        </View>
 
-      <ScrollView contentContainerStyle={styles.container}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#19551B" />
-        ) : (
-          posts.map((post) => (
-            <View key={post.id} style={styles.postCard}>
-              <Text style={styles.postTitle}>{post.title}</Text>
-              <Text style={styles.postContent}>{post.content}</Text>
-              <Text style={styles.postMeta}>
-                By {post.user_name} • {formatDate(post.created_at)}
-              </Text>
+        {/* Forum Posts */}
+        <ScrollView contentContainerStyle={styles.container}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#19551B" />
+          ) : (
+            posts.map((post) => (
+              <View key={post.id} style={styles.postCard}>
+                <Text style={styles.postTitle}>{post.title}</Text>
+                <Text style={styles.postContent}>{post.content}</Text>
+                <Text style={styles.postMeta}>
+                  By {post.user_name} • {formatDate(post.created_at)}
+                </Text>
 
-              <View style={styles.actionsRow}>
-                <TouchableOpacity onPress={() => handleLike(post.id)} style={styles.iconBtn}>
-                  <Ionicons name="heart-outline" size={18} color="#19551B" />
-                  <Text style={styles.iconLabel}>{post.likes || 0} Likes</Text>
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity onPress={() => handleLike(post.id)} style={styles.iconBtn}>
+                    <Ionicons name="heart-outline" size={18} color="#19551B" />
+                    <Text style={styles.iconLabel}>{post.likes || 0} Likes</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => toggleReplies(post.id)} style={styles.iconBtn}>
+                    <Ionicons name="chatbubble-outline" size={18} color="#19551B" />
+                    <Text style={styles.iconLabel}>
+                      {expandedPostId === post.id ? 'Hide Replies' : `${post.replies?.length || 0} Replies`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {expandedPostId === post.id && (
+                  <View style={styles.repliesSection}>
+                    {post.replies?.map((reply) => (
+                      <View key={reply.id} style={styles.replyBox}>
+                        <Text style={styles.replyUser}>
+                          {reply.user_name} • {formatDate(reply.created_at)}
+                        </Text>
+                        <Text style={styles.replyText}>{reply.content}</Text>
+                      </View>
+                    ))}
+
+                    <View style={styles.replyInputSection}>
+                      <TextInput
+                        placeholder="Write a reply..."
+                        style={styles.replyInput}
+                        value={replyInputs[post.id] || ''}
+                        onChangeText={(text) => handleReplyChange(post.id, text)}
+                      />
+                      <TouchableOpacity
+                        style={styles.sendButton}
+                        onPress={() => handleAddReply(post.id)}
+                      >
+                        <Ionicons name="send" size={20} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </ScrollView>
+
+        {/* Floating Post Button */}
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Create Post Modal */}
+        <Modal visible={isModalVisible} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Create New Post</Text>
+              <TextInput
+                placeholder="Title"
+                style={styles.modalInput}
+                value={title}
+                onChangeText={setTitle}
+              />
+              <TextInput
+                placeholder="Content"
+                multiline
+                style={styles.modalInputLarge}
+                value={content}
+                onChangeText={setContent}
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#19551B' }]}
+                  onPress={handleAddPost}
+                >
+                  <Text style={styles.modalButtonText}>Post</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => toggleReplies(post.id)} style={styles.iconBtn}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#19551B" />
-                  <Text style={styles.iconLabel}>
-                    {expandedPostId === post.id ? 'Hide Replies' : `${post.replies?.length || 0} Replies`}
-                  </Text>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#888' }]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-
-              {expandedPostId === post.id && (
-                <View style={styles.repliesSection}>
-                  {post.replies?.map((reply) => (
-                    <View key={reply.id} style={styles.replyBox}>
-                      <Text style={styles.replyUser}>
-                        {reply.user_name} • {formatDate(reply.created_at)}
-                      </Text>
-                      <Text style={styles.replyText}>{reply.content}</Text>
-                    </View>
-                  ))}
-
-                  <View style={styles.replyInputSection}>
-                    <TextInput
-                      placeholder="Write a reply..."
-                      style={styles.replyInput}
-                      value={replyInputs[post.id] || ''}
-                      onChangeText={(text) => handleReplyChange(post.id, text)}
-                    />
-                    <TouchableOpacity
-                      style={styles.sendButton}
-                      onPress={() => handleAddReply(post.id)}
-                    >
-                      <Ionicons name="send" size={20} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
-
-      <Modal visible={isModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create New Post</Text>
-            <TextInput
-              placeholder="Title"
-              style={styles.modalInput}
-              value={title}
-              onChangeText={setTitle}
-            />
-            <TextInput
-              placeholder="Content"
-              multiline
-              style={styles.modalInputLarge}
-              value={content}
-              onChangeText={setContent}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: '#19551B' }]}
-                onPress={handleAddPost}
-              >
-                <Text style={styles.modalButtonText}>Post</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: '#888' }]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 };
@@ -242,6 +246,7 @@ export default ForumScreen;
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F7FBF1' },
+  wrapper: { flex: 1, position: 'relative' },
   container: { padding: 16, paddingBottom: 100 },
   header: {
     padding: 16,
@@ -249,6 +254,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 10,
   },
   headerTitle: { fontSize: 22, color: '#1BB582', fontWeight: 'bold' },
   postCard: {
@@ -307,6 +313,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
+    zIndex: 5,
   },
   modalOverlay: {
     flex: 1,

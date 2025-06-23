@@ -16,6 +16,7 @@ import ProductViewScreen from '../screens/ProductScreen/ProductViewScreen';
 import EducationStack from './EducationNav';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import HeaderMenu from '../components/HeaderComponent'; // Add this component
+import ChatBotScreen from '../screens/ChatBotScreen/ChatBotScreen';
 
 import { useAuth } from '../context/AuthProvider';
 
@@ -79,6 +80,7 @@ const AppNavigator = () => {
           <Stack.Screen name="Products" component={ProductScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProductDetails" component={ProductViewScreen} options={{ headerShown: true }} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+          <Stack.Screen name="Chatbot" component={ChatBotScreen} />
         </>
       ) : (
         <>

@@ -20,7 +20,7 @@ import Animated, {
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../context/AuthProvider'; // Adjust path if needed
+import { useAuth } from '../context/AuthProvider';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,7 +30,7 @@ type Props = {
 
 const PopupMenu: React.FC<Props> = ({ onClose }) => {
   const navigation = useNavigation();
-  const { clearAuthData } = useAuth(); // 👈 Get logout from context
+  const { clearAuthData } = useAuth();
   const translateX = useSharedValue(width);
 
   useEffect(() => {
@@ -69,17 +69,17 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
     transform: [{ translateX: translateX.value - width / 2 }],
   }));
 
-  const handleProfile = () => {
+  const handleNavigate = (screenName: string) => {
     onClose();
-    navigation.navigate('Profile');
+    navigation.navigate(screenName as never);
   };
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('user'); // Clear user data
-      clearAuthData(); // 👈 Clear auth context state
+      await AsyncStorage.removeItem('user');
+      clearAuthData();
       onClose();
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); // Reset nav stack
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e) {
       console.error('Logout error:', e);
     }
@@ -87,16 +87,24 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
 
   return (
     <View style={StyleSheet.absoluteFillObject}>
-      {/* Background Blur */}
       <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </BlurView>
 
-      {/* Slide-in menu */}
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.menuContainer, rSlideStyle]}>
           <View style={styles.menuContent}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleProfile}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('Chatbot')}>
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#19551B" />
+              <Text style={styles.menuText}>Chatbot</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('ChatSystem')}>
+              <Ionicons name="chatbox-outline" size={22} color="#19551B" />
+              <Text style={styles.menuText}>Chat System</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('Profile')}>
               <Ionicons name="person-outline" size={24} color="#19551B" />
               <Text style={styles.menuText}>Profile</Text>
             </TouchableOpacity>
