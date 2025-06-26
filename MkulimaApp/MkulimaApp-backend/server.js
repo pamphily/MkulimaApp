@@ -8,6 +8,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const forumRoutes = require('./routes/forum'); // add this
 const socketSetup = require('./socket');
+const chatRoutes = require('./routes/chat');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +21,9 @@ app.use(express.json());
 // REST API routes
 app.use('/user', authRoutes);
 app.use('/user', userRoutes);
-app.use('/api/forum', forumRoutes); // ✅ REGISTER FORUM ROUTES
+app.use('/api/forum', forumRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/users', require('./routes/user'));
 
 // Socket.IO setup
 const io = new Server(server, {

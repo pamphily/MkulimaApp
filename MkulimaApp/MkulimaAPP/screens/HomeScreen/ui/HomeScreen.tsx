@@ -156,7 +156,7 @@ const HomeScreen = () => {
                       AI{"\n"}support about any inquiries
                     </Text>
                     <TouchableOpacity style={styles.chatButton}>
-                      <Text style={styles.chatButtonText}>Chat Now</Text>
+                      <Text style={styles.chatButtonText} onPress={() => handleNavigate('Chatbot')}>Chat Now</Text>
                     </TouchableOpacity>
                   </View>
                   <Image

@@ -117,13 +117,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 18,
-    color: '#19551B',
+    color: 'white',
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 26,
   },
   button: {
-    backgroundColor: 'white',
+    backgroundColor: '#19551B',
     paddingVertical: 16,
     borderRadius: 30,
     alignItems: 'center',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   buttonText: {
-    color: '#19551B',
+    color: '#white',
     fontSize: 18,
     fontWeight: 'bold',
   },

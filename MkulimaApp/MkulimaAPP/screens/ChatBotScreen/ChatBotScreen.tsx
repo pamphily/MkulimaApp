@@ -1,146 +1,77 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  Keyboard,
-  TouchableWithoutFeedback,
-  ScrollView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// ChatbotScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import sarufi from 'sarufi'; // 🌟
 
 interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
 }
 
+const BOT_ID = 6062;
+
+sarufi.login({ api_key: 'eee785909d281f837418de3da1dac0216e550f028e4e65b795d1ea044297725d' });
+
 const ChatbotScreen = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const flatListRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
-    loadMessages();
+    AsyncStorage.getItem('chat_messages').then(saved => saved && setMessages(JSON.parse(saved)));
   }, []);
 
   useEffect(() => {
-    saveMessages();
-    scrollToBottom();
+    AsyncStorage.setItem('chat_messages', JSON.stringify(messages));
   }, [messages]);
-
-  const scrollToBottom = () => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-  };
-
-  const saveMessages = async () => {
-    try {
-      await AsyncStorage.setItem('chat_messages', JSON.stringify(messages));
-    } catch (err) {
-      console.error('Failed to save messages:', err);
-    }
-  };
-
-  const loadMessages = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('chat_messages');
-      if (saved) setMessages(JSON.parse(saved));
-    } catch (err) {
-      console.error('Failed to load messages:', err);
-    }
-  };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-
-    const userMessage: ChatMessage = { sender: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMsg = { sender: 'user', text: input };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
+    Keyboard.dismiss();
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer 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', // Replace with your actual API key
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: 'Jibu kila kitu kwa Kiswahili kama msaidizi wa kilimo.' },
-            { role: 'user', content: input },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-      const reply = data?.choices?.[0]?.message?.content || 'Samahani, sikuelewa.';
-      const botMessage: ChatMessage = { sender: 'bot', text: reply };
-      setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prev => [
-        ...prev,
-        { sender: 'bot', text: 'Samahani, kuna hitilafu kwenye mtandao.' },
-      ]);
+      const res = await sarufi.chat({ bot_id: BOT_ID, message: input });
+      const botText = Array.isArray(res.message) ? res.message.join(' ') : res.message;
+      setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+    } catch (e) {
+      console.error(e);
+      setMessages(prev => [...prev, { sender: 'bot', text: 'Hitilafu. Jaribu tena.' }]);
     }
   };
 
-  const renderItem = ({ item }: { item: ChatMessage }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.sender === 'user' ? styles.userBubble : styles.botBubble,
-      ]}
-    >
-      <Text
-        style={[
-          styles.messageText,
-          item.sender === 'user' ? styles.userText : styles.botText,
-        ]}
-      >
-        {item.text}
-      </Text>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.wrapper}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 70}
-        >
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(_, index) => index.toString()}
-            renderItem={renderItem}
-            contentContainerStyle={styles.messagesContainer}
-          />
-
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Andika ujumbe wako..."
-              placeholderTextColor="#666"
-              multiline
-            />
-            <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
-              <Ionicons name="send" size={22} color="#fff" />
-            </TouchableOpacity>
+      <FlatList
+        data={messages}
+        keyExtractor={(_, i) => i.toString()}
+        inverted
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <View style={[styles.bubble, item.sender === 'user' ? styles.user : styles.bot]}>
+            <Text style={[styles.text, item.sender === 'user' ? styles.userText : styles.botText]}>
+              {item.text}
+            </Text>
           </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+        )}
+      />
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Andika ujumbe..."
+            multiline
+          />
+          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage}>
+            <Text style={styles.sendBtnText}>Tuma</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -148,67 +79,16 @@ const ChatbotScreen = () => {
 export default ChatbotScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f1f7e9',
-  },
-  wrapper: {
-    flex: 1,
-  },
-  messagesContainer: {
-    padding: 12,
-    paddingBottom: 20,
-  },
-  messageBubble: {
-    padding: 14,
-    borderRadius: 16,
-    marginVertical: 6,
-    maxWidth: '85%',
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#19551B',
-  },
-  botBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#ffffff',
-    borderColor: '#19551B',
-    borderWidth: 1,
-  },
-  messageText: {
-    fontSize: 15,
-  },
-  userText: {
-    color: '#fff',
-  },
-  botText: {
-    color: '#19551B',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#f1f7e9',
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'android' ? 24 : 16,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    minHeight: 55,
-    maxHeight: 140,
-    color: '#000',
-  },
-  sendButton: {
-    backgroundColor: '#19551B',
-    borderRadius: 20,
-    padding: 10,
-    marginLeft: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#f1f7e9' },
+  list: { justifyContent: 'flex-end', padding: 16 },
+  bubble: { marginVertical: 4, padding: 12, borderRadius: 16, maxWidth: '80%' },
+  user: { alignSelf: 'flex-end', backgroundColor: '#19551B' },
+  bot: { alignSelf: 'flex-start', backgroundColor: '#fff', borderColor: '#19551B', borderWidth: 1 },
+  text: { fontSize: 16 },
+  userText: { color: '#fff' },
+  botText: { color: '#19551B' },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 20, backgroundColor: '#f1f7e9',paddingBottom: Platform.OS === 'android' ? 60 : 32, },
+  input: { flex: 1, backgroundColor: '#fff', borderRadius: 20, padding: 12, fontSize: 16, maxHeight: 140 },
+  sendBtn: { backgroundColor: '#19551B', borderRadius: 20, padding: 12, marginLeft: 8 },
+  sendBtnText: { color: '#fff', fontWeight: 'bold' },
 });

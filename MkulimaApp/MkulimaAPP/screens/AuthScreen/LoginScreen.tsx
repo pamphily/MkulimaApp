@@ -69,13 +69,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
       setAuthData({ token });
       setLoading(false);
-      navigation.replace('Home');
       return;
     }
 
     // ✅ Backend Login
     try {
-      const response = await fetch('http://172.23.16.1:5000/user/login', {
+      const response = await fetch('http://192.168.100.102:5000/user/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -91,7 +90,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       const { token } = data;
       setAuthData({ token });
-      navigation.replace('Home');
+
     } catch (error) {
       console.error(error);
       Alert.alert('Network Error', 'Could not reach server.');

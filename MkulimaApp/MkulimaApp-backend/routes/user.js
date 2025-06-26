@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { createUser, findUserByEmail, findUserById } = require('../models/User');
 const authenticate = require('../middleware/authenticate');
+const db = require('../db'); // PostgreSQL connection
 
 // ✅ POST /user — Register a new user
 router.post('/', async (req, res) => {
@@ -26,7 +27,6 @@ router.post('/', async (req, res) => {
       role,
     });
 
-    // Optionally create a token immediately after registration
     const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     res.json({
@@ -51,8 +51,6 @@ router.post('/', async (req, res) => {
 // ✅ GET /user/profile — Get current user info (requires token)
 router.get('/profile', authenticate, async (req, res) => {
   try {
-    console.log('Authenticated user:', req.user); // Debug log
-
     const userId = req.user.id;
     const user = await findUserById(userId);
 
@@ -74,8 +72,19 @@ router.get('/profile', authenticate, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error in /user/profile route:', error); // Debug log
+    console.error('Error in /user/profile route:', error);
     res.status(500).json({ status: 'error', message: 'Server error' });
+  }
+});
+
+// ✅ GET /api/users — Get all users (used in ChatListScreen)
+router.get('/', async (req, res) => {
+  try {
+    const result = await db.query('SELECT id, name FROM users');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 

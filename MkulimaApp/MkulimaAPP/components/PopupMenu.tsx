@@ -79,7 +79,7 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
       await AsyncStorage.removeItem('user');
       clearAuthData();
       onClose();
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+
     } catch (e) {
       console.error('Logout error:', e);
     }
@@ -99,7 +99,7 @@ const PopupMenu: React.FC<Props> = ({ onClose }) => {
               <Text style={styles.menuText}>Chatbot</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('ChatSystem')}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('ChatList')}>
               <Ionicons name="chatbox-outline" size={22} color="#19551B" />
               <Text style={styles.menuText}>Chat System</Text>
             </TouchableOpacity>

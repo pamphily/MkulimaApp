@@ -15,8 +15,10 @@ import ProductScreen from '../screens/ProductScreen/ProductScreen';
 import ProductViewScreen from '../screens/ProductScreen/ProductViewScreen';
 import EducationStack from './EducationNav';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
-import HeaderMenu from '../components/HeaderComponent'; // Add this component
+import HeaderMenu from '../components/HeaderComponent';
 import ChatBotScreen from '../screens/ChatBotScreen/ChatBotScreen';
+import ChatListScreen from '../screens/ChatScreen/ChatListScreen';
+import ChatScreen from '../screens/ChatScreen/ChatScreen';
 
 import { useAuth } from '../context/AuthProvider';
 
@@ -81,6 +83,8 @@ const AppNavigator = () => {
           <Stack.Screen name="ProductDetails" component={ProductViewScreen} options={{ headerShown: true }} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
           <Stack.Screen name="Chatbot" component={ChatBotScreen} />
+          <Stack.Screen name="ChatList" component={ChatListScreen} />
+          <Stack.Screen name="ChatScreen" component={ChatScreen} />
         </>
       ) : (
         <>
