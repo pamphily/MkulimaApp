@@ -16,7 +16,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthContext } from '../../context/AuthProvider';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import API_BASE from '../../../api/api';
+import API_BASE from '../../api/api';
 
 type RootStackParamList = {
   Login: undefined;
@@ -74,7 +74,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     // ✅ Backend Login
     try {
-      const response = await fetch('http://192.168.100.102:5000/user/login', {
+      const response = await fetch(`${API_BASE}/user/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

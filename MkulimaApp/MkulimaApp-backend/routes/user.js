@@ -80,7 +80,7 @@ router.get('/profile', authenticate, async (req, res) => {
 // ✅ GET /api/users — Get all users (used in ChatListScreen)
 router.get('/', async (req, res) => {
   try {
-    const result = await db.query('SELECT id, name FROM users');
+    const result = await db.query('SELECT id, name, role FROM users');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching users:', err);

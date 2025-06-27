@@ -34,7 +34,7 @@ const ProfileScreen = () => {
       }
 
       try {
-        const response = await fetch('http://172.23.16.1:5000/user/profile', {
+        const response = await fetch(`${API_BASE}/user/profile`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

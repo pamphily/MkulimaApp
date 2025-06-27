@@ -18,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import zxcvbn from 'zxcvbn';
 import { Picker } from '@react-native-picker/picker';
+import API_BASE from '../../api/api';
 
 type RootStackParamList = {
   Register: undefined;
@@ -100,7 +101,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.100.102:5000/user/', {
+      const response = await fetch(`${API_BASE}/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -6,8 +6,12 @@ import {
   TouchableOpacity,
   FlatList,
   KeyboardAvoidingView,
-  StyleSheet,
+  Platform,
   SafeAreaView,
+  StyleSheet,
+  Image,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
@@ -44,12 +48,20 @@ const ChatScreen = () => {
     if (currentUserId) {
       fetchChatHistory();
 
-      socket.on('receiveMessage', (message: Message) => {
+      socket.emit('register', currentUserId);
+
+      socket.on('receiveMessage', (msg: any) => {
         if (
-          (message.sender_id === receiver.id && message.receiver_id === currentUserId) ||
-          (message.sender_id === currentUserId && message.receiver_id === receiver.id)
+          (msg.senderId === receiver.id && msg.receiverId === currentUserId) ||
+          (msg.senderId === currentUserId && msg.receiverId === receiver.id)
         ) {
-          setMessages((prev) => [...prev, message]);
+          const newMsg: Message = {
+            sender_id: msg.senderId,
+            receiver_id: msg.receiverId,
+            content: msg.message,
+            created_at: msg.timestamp,
+          };
+          setMessages((prev) => [...prev, newMsg]);
         }
       });
 
@@ -73,9 +85,7 @@ const ChatScreen = () => {
 
   const fetchChatHistory = async () => {
     try {
-      const res = await fetch(
-        `${API_BASE}/api/chat/history/${currentUserId}/${receiver.id}`
-      );
+      const res = await fetch(`${API_BASE}/api/chat/history/${currentUserId}/${receiver.id}`);
       const data = await res.json();
       setMessages(data);
     } catch (error) {
@@ -85,22 +95,30 @@ const ChatScreen = () => {
 
   const sendMessage = async () => {
     if (!messageText.trim()) return;
-    const message: Message = {
-      sender_id: currentUserId!,
-      receiver_id: receiver.id,
-      content: messageText.trim(),
+
+    const message = {
+      senderId: currentUserId!,
+      receiverId: receiver.id,
+      message: messageText.trim(),
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat/send`, {
+      await fetch(`${API_BASE}/api/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(message),
       });
-      const saved = await res.json();
 
-      socket.emit('sendMessage', saved);
-      setMessages((prev) => [...prev, saved]);
+      socket.emit('sendMessage', message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender_id: currentUserId!,
+          receiver_id: receiver.id,
+          content: message.message,
+          created_at: new Date().toISOString(),
+        },
+      ]);
       setMessageText('');
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -119,29 +137,44 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Chat with {receiver.name}</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          {/* Avatar + Name */}
+          <View style={styles.avatarHeader}>
+            <Image
+              source={require('../../assets/default-avatar.png')}
+              style={styles.avatar}
+            />
+            <Text style={styles.name}>{receiver.name}</Text>
+          </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderMessage}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={renderMessage}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
 
-      <KeyboardAvoidingView behavior="padding" style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Type your message..."
-          placeholderTextColor="#777"
-          value={messageText}
-          onChangeText={setMessageText}
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Ionicons name="send" size={24} color="white" />
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 32 : 60}
+            style={styles.inputContainer}
+          >
+            <TextInput
+              style={styles.input}
+              placeholder="Andika ujumbe wako..."
+              placeholderTextColor="#777"
+              value={messageText}
+              onChangeText={setMessageText}
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <Ionicons name="send" size={24} color="white" />
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
@@ -152,14 +185,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f7e9',
-    padding: 10,
   },
-  header: {
-    fontSize: 20,
+  avatarHeader: {
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 6,
+  },
+  name: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#19551B',
-    marginBottom: 10,
-    alignSelf: 'center',
   },
   messageContainer: {
     maxWidth: '75%',
@@ -185,21 +225,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'right',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: '#fff',
-    borderTopColor: '#ddd',
-    borderTopWidth: 1,
-  },
-  input: {
-    flex: 1,
-    height: 45,
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    backgroundColor: '#f1f7e9',
-    color: '#000',
-  },
+inputContainer: {
+  flexDirection: 'row',
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+  backgroundColor: '#fff',
+  borderTopColor: '#ddd',
+  borderTopWidth: 1,
+  alignItems: 'center',
+},
+
+input: {
+  flex: 1,
+  borderRadius: 25,
+  paddingHorizontal: 15,
+  backgroundColor: '#f1f7e9',
+  color: '#000',
+  fontSize: 16,
+  height: Platform.OS === 'android' ? 60 : 48, // This raises the input
+},
+
   sendButton: {
     backgroundColor: '#19551B',
     borderRadius: 25,
