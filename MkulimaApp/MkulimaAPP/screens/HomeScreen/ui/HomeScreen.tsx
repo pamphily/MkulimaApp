@@ -60,7 +60,7 @@ const HomeScreen = () => {
       {
         id: "4",
         title: "Carrots",
-        image: "../../../assets/image/carrot.png",
+        image: "../../../../assets/image/carrot.png",
         stock: 20,
       },
     ];

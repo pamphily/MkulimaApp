@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const forumController = require('../controllers/forumController');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authenticate');
 
 // ===== Forum Posts =====
 router.get('/posts', forumController.getAllPosts);

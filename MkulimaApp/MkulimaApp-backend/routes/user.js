@@ -77,15 +77,65 @@ router.get('/profile', authenticate, async (req, res) => {
   }
 });
 
+// ✅ GET /user/:id — Get user by ID (requires token)
+router.get('/:id', authenticate, async (req, res) => {
+  try {
+    const requestedId = req.params.id;
+    const tokenUserId = req.user.id;
+
+    // Optional: Ensure users can only view their own profile unless they're admin
+    if (requestedId !== tokenUserId) {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    }
+
+    const user = await findUserById(requestedId);
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    const { id, name, email, phone, role, created_at } = user;
+
+    res.json({
+      status: 'success',
+      user: {
+        id,
+        name,
+        email,
+        phone,
+        role,
+        createdAt: created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Error in /user/:id route:', error);
+    res.status(500).json({ status: 'error', message: 'Server error' });
+  }
+});
+
+
 // ✅ GET /api/users — Get all users (used in ChatListScreen)
 router.get('/', async (req, res) => {
   try {
-    const result = await db.query('SELECT id, name, role FROM users');
+    const result = await db.query('SELECT id, name, email, role, created_at FROM users');
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
+
+// DELETE /user/:id — Delete user by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ status: 'success', message: 'User deleted' });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 
 module.exports = router;

@@ -3,8 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthData = {
   token: string;
+  id: string;
   name: string;
   email: string;
+  role: string;
 };
 
 type AuthContextType = {

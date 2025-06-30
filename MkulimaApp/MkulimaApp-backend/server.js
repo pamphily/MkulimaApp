@@ -23,7 +23,7 @@ app.use('/user', authRoutes);
 app.use('/user', userRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/users', require('./routes/user'));
+
 
 // Socket.IO setup
 const io = new Server(server, {

@@ -74,7 +74,7 @@ const ChatListScreen = () => {
 
   const fetchAllUsers = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/users`);
+      const response = await fetch(`${API_BASE}/user`);
       const data = await response.json();
       const filtered = data.filter((u: User) => u.id !== currentUserId);
       setAllUsers(filtered);

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { AuthContext } from '../../context/AuthContext';
+import API_BASE from '../../api/api';
+import { getUserData } from '../../services/UserService';
 
 type UserType = {
   id: number;
@@ -21,20 +22,22 @@ type UserType = {
 };
 
 const ProfileScreen = () => {
-  const { authData } = useContext(AuthContext);
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!authData?.token) {
+      const authData = await getUserData();
+      console.log('🔐 Auth Data:', authData);
+
+      if (!authData?.token || !authData?.id) {
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${API_BASE}/user/profile`, {
+        const response = await fetch(`${API_BASE}/user/${authData.id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -43,7 +46,8 @@ const ProfileScreen = () => {
         });
 
         const data = await response.json();
-        console.log('Profile response:', data);
+        console.log('📡 Response status:', response.status);
+        console.log('📦 Response data:', data);
 
         if (response.ok && data.status === 'success') {
           setUser(data.user);
@@ -59,7 +63,7 @@ const ProfileScreen = () => {
     };
 
     fetchProfile();
-  }, [authData?.token]);
+  }, []);
 
   const handlePickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();

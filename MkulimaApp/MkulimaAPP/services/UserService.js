@@ -1,4 +1,3 @@
-// services/UserService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper function to decode JWT token payload
@@ -42,6 +41,19 @@ export const getUserId = async () => {
     return payload?.id || null;
   } catch (error) {
     console.error('Error getting user ID from token:', error);
+    return null;
+  }
+};
+
+export const getUserData = async () => {
+  try {
+    const token = await getUserToken();
+    const id = await getUserId();
+    if (!token || !id) return null;
+
+    return { token, id };
+  } catch (error) {
+    console.error('Error getting user data:', error);
     return null;
   }
 };
