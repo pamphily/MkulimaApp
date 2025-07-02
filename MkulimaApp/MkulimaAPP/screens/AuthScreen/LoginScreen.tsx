@@ -7,10 +7,12 @@ import {
   StyleSheet,
   Image,
   Alert,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthContext } from '../../context/AuthProvider';
@@ -33,6 +35,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('admin@gmail.com');
   const [password, setPassword] = useState('admin');
   const [loading, setLoading] = useState(false);
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   const passwordInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -64,15 +70,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     setLoading(true);
 
-    // ✅ Temporary Admin Login
     if (email === 'admin@gmail.com' && password === 'admin') {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+      const token = "admin_token_mock";
       setAuthData({ token });
       setLoading(false);
       return;
     }
 
-    // ✅ Backend Login
     try {
       const response = await fetch(`${API_BASE}/user/login`, {
         method: 'POST',
@@ -90,12 +94,41 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       const { token } = data;
       setAuthData({ token });
-
     } catch (error) {
       console.error(error);
       Alert.alert('Network Error', 'Could not reach server.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/user/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || data.status === 'error') {
+        Alert.alert('Failed', data.error || 'Unable to process request');
+      } else {
+        Alert.alert('Success', 'Password reset instructions sent to your email.');
+        setForgotModalVisible(false);
+        setForgotEmail('');
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Network error while processing request.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -167,7 +200,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               </View>
 
               <TouchableOpacity
-                onPress={() => navigation.navigate('Password')}
+                onPress={() => setForgotModalVisible(true)}
                 style={styles.forgotPasswordButton}
               >
                 <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
@@ -199,6 +232,48 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               </View>
             )}
           </ScrollView>
+
+          {/* Forgot Password Modal */}
+          <Modal visible={forgotModalVisible} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                <Text style={styles.modalSubtitle}>
+                  Enter your email to receive password reset instructions.
+                </Text>
+
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Email"
+                  placeholderTextColor="#999"
+                  value={forgotEmail}
+                  onChangeText={setForgotEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.modalButtonGroup}>
+                  <TouchableOpacity
+                    style={[styles.loginButton, { flex: 1, marginRight: 5 }]}
+                    onPress={handleForgotPassword}
+                    disabled={forgotLoading}
+                  >
+                    {forgotLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Submit</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.loginButton, { flex: 1, backgroundColor: '#ccc' }]}
+                    onPress={() => setForgotModalVisible(false)}
+                  >
+                    <Text style={[styles.buttonText, { color: '#000' }]}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -287,33 +362,70 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 5,
   },
   buttonText: {
-    color: '#fff',
+    color: '#f1f7e9',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
   },
   registerText: {
-    color: '#666',
-    fontSize: 15,
+    fontSize: 16,
+    color: '#333',
   },
   registerLink: {
+    fontSize: 16,
     color: '#19551B',
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   footer: {
-    marginTop: 30,
     alignItems: 'center',
+    marginTop: 40,
   },
   footerText: {
     color: '#999',
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#19551B',
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalInput: {
+    height: 50,
+    borderColor: '#19551B',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+  },
+  modalButtonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });

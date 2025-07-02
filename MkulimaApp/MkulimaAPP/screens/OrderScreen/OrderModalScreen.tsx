@@ -312,7 +312,7 @@ const OrderWizardModal: React.FC<OrderWizardModalProps> = ({ product, onClose })
               {product.description}
             </Text>
           ) : null}
-          <Text style={styles.productPrice}>KES {product.price.toFixed(2)}</Text>
+          <Text style={styles.productPrice}>TZS {product.price.toFixed(2)}</Text>
         </View>
       </View>
 
@@ -439,7 +439,7 @@ const OrderWizardModal: React.FC<OrderWizardModalProps> = ({ product, onClose })
       {deliveryMethod === "delivery" && (
         <View style={styles.section}>
           <Text style={styles.label}>Shipping Fee</Text>
-          <Text style={styles.shippingFeeText}>KES {shippingFee.toFixed(2)}</Text>
+          <Text style={styles.shippingFeeText}>TZS {shippingFee.toFixed(2)}</Text>
         </View>
       )}
     </View>
@@ -517,23 +517,23 @@ const OrderWizardModal: React.FC<OrderWizardModalProps> = ({ product, onClose })
         <Text style={styles.label}>Order Summary</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryText}>Subtotal</Text>
-          <Text style={styles.summaryText}>KES {subTotal.toFixed(2)}</Text>
+          <Text style={styles.summaryText}>TZS {subTotal.toFixed(2)}</Text>
         </View>
         {promoApplied && (
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Discount</Text>
-            <Text style={styles.summaryText}>-KES {discountAmount.toFixed(2)}</Text>
+            <Text style={styles.summaryText}>-TZS {discountAmount.toFixed(2)}</Text>
           </View>
         )}
         {deliveryMethod === "delivery" && (
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Shipping</Text>
-            <Text style={styles.summaryText}>KES {shippingFee.toFixed(2)}</Text>
+            <Text style={styles.summaryText}>TZS {shippingFee.toFixed(2)}</Text>
           </View>
         )}
         <View style={[styles.summaryRow, styles.summaryTotalRow]}>
           <Text style={styles.summaryTotalText}>Total</Text>
-          <Text style={styles.summaryTotalText}>KES {totalPayable.toFixed(2)}</Text>
+          <Text style={styles.summaryTotalText}>TZS {totalPayable.toFixed(2)}</Text>
         </View>
       </View>
     </View>

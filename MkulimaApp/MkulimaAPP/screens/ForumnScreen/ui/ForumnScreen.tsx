@@ -10,11 +10,13 @@ import {
   Modal,
   ToastAndroid,
   ActivityIndicator,
+  RefreshControl,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HeaderMenu from '../../../components/HeaderComponent';
 import API_BASE from '../../../api/api';
-import { getUserId } from '../../../services/UserService';
+import { getUserData } from '../../../services/UserService';
 
 const ForumScreen = () => {
   const [posts, setPosts] = useState([]);
@@ -24,24 +26,46 @@ const ForumScreen = () => {
   const [replyInputs, setReplyInputs] = useState({});
   const [expandedPostId, setExpandedPostId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [likeAnimations, setLikeAnimations] = useState({});
 
   useEffect(() => {
     fetchPosts();
-    const interval = setInterval(fetchPosts, 10000);
+    const interval = setInterval(fetchPosts, 25000);
     return () => clearInterval(interval);
   }, []);
+
+  const initAnimationForPost = (postId) => {
+    if (!likeAnimations[postId]) {
+      setLikeAnimations((prev) => ({
+        ...prev,
+        [postId]: new Animated.Value(1),
+      }));
+    }
+  };
+
+  const animateLike = (postId) => {
+    const anim = likeAnimations[postId];
+    if (!anim) return;
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 1.5, duration: 150, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  };
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/api/forum/posts`);
       const data = await res.json();
+      data.forEach(post => initAnimationForPost(post.id));
       setPosts(data);
     } catch (error) {
       console.error('Error fetching posts:', error);
       ToastAndroid.show('⚠️ Failed to load posts', ToastAndroid.SHORT);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -50,13 +74,16 @@ const ForumScreen = () => {
       return ToastAndroid.show('⚠️ All fields are required', ToastAndroid.SHORT);
     }
     try {
-      const userId = await getUserId();
+      const { token } = await getUserData();
+      if (!token) throw new Error('Not authenticated');
       const res = await fetch(`${API_BASE}/api/forum/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, userId }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title, content }),
       });
+      if (!res.ok) throw new Error('Failed to create post');
       const newPost = await res.json();
+      initAnimationForPost(newPost.id);
       setPosts((prev) => [newPost, ...prev]);
       setTitle('');
       setContent('');
@@ -76,12 +103,14 @@ const ForumScreen = () => {
     const replyText = replyInputs[postId];
     if (!replyText) return;
     try {
-      const userId = await getUserId();
-      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}/reply`, {
+      const { token } = await getUserData();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}/replies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: replyText, userId }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content: replyText }),
       });
+      if (!res.ok) throw new Error('Failed to send reply');
       const newReply = await res.json();
       setPosts((prev) =>
         prev.map((post) =>
@@ -102,18 +131,24 @@ const ForumScreen = () => {
 
   const handleLike = async (postId) => {
     try {
-      const userId = await getUserId();
+      const { token } = await getUserData();
+      if (!token) throw new Error('Not authenticated');
       const res = await fetch(`${API_BASE}/api/forum/posts/${postId}/like`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) throw new Error('Failed to like post');
       const result = await res.json();
+      animateLike(postId);
       ToastAndroid.show(result.liked ? '❤️ Liked' : '💔 Unliked', ToastAndroid.SHORT);
       setPosts((prev) =>
-        prev.map((post) =>
-          post.id === postId ? { ...post, likes: result.likeCount } : post
-        )
+        prev.map((post) => {
+          if (post.id === postId) {
+            const newLikesCount = result.likeCount ?? (result.liked ? (post.likes || 0) + 1 : (post.likes || 0) - 1);
+            return { ...post, likes: newLikesCount, likedByUser: result.liked };
+          }
+          return post;
+        })
       );
     } catch (error) {
       console.error('Error liking post:', error);
@@ -129,80 +164,94 @@ const ForumScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.wrapper}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Forum</Text>
           <HeaderMenu />
         </View>
-
-        {/* Forum Posts */}
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchPosts();
+              }}
+              colors={['#1BB582']}
+            />
+          }
+        >
           {loading ? (
             <ActivityIndicator size="large" color="#19551B" />
           ) : (
-            posts.map((post) => (
-              <View key={post.id} style={styles.postCard}>
-                <Text style={styles.postTitle}>{post.title}</Text>
-                <Text style={styles.postContent}>{post.content}</Text>
-                <Text style={styles.postMeta}>
-                  By {post.user_name} • {formatDate(post.created_at)}
-                </Text>
-
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity onPress={() => handleLike(post.id)} style={styles.iconBtn}>
-                    <Ionicons name="heart-outline" size={18} color="#19551B" />
-                    <Text style={styles.iconLabel}>{post.likes || 0} Likes</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity onPress={() => toggleReplies(post.id)} style={styles.iconBtn}>
-                    <Ionicons name="chatbubble-outline" size={18} color="#19551B" />
-                    <Text style={styles.iconLabel}>
-                      {expandedPostId === post.id ? 'Hide Replies' : `${post.replies?.length || 0} Replies`}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {expandedPostId === post.id && (
-                  <View style={styles.repliesSection}>
-                    {post.replies?.map((reply) => (
-                      <View key={reply.id} style={styles.replyBox}>
-                        <Text style={styles.replyUser}>
-                          {reply.user_name} • {formatDate(reply.created_at)}
-                        </Text>
-                        <Text style={styles.replyText}>{reply.content}</Text>
-                      </View>
-                    ))}
-
-                    <View style={styles.replyInputSection}>
-                      <TextInput
-                        placeholder="Write a reply..."
-                        style={styles.replyInput}
-                        value={replyInputs[post.id] || ''}
-                        onChangeText={(text) => handleReplyChange(post.id, text)}
-                      />
-                      <TouchableOpacity
-                        style={styles.sendButton}
-                        onPress={() => handleAddReply(post.id)}
-                      >
-                        <Ionicons name="send" size={20} color="#fff" />
-                      </TouchableOpacity>
-                    </View>
+            posts.map((post) => {
+              const isLiked = post.likedByUser === undefined ? false : post.likedByUser;
+              const animValue = likeAnimations[post.id] || new Animated.Value(1);
+              return (
+                <View key={post.id} style={styles.postCard}>
+                  <Text style={styles.postTitle}>{post.title}</Text>
+                  <Text style={styles.postContent}>{post.content}</Text>
+                  <Text style={styles.postMeta}>
+                    By {post.user_name}
+                    {post.user_title === 'Expert' && <Text style={{ color: '#1BB582' }}> • Expert</Text>} • {formatDate(post.created_at)}
+                  </Text>
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      onPress={() => handleLike(post.id)}
+                      style={styles.iconBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Animated.View style={{ transform: [{ scale: animValue }] }}>
+                        <Ionicons
+                          name={isLiked ? 'heart' : 'heart-outline'}
+                          size={22}
+                          color={isLiked ? 'red' : '#19551B'}
+                        />
+                      </Animated.View>
+                      <Text style={styles.iconLabel}>{post.likes || 0} Likes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => toggleReplies(post.id)} style={styles.iconBtn}>
+                      <Ionicons name="chatbubble-outline" size={22} color="#19551B" />
+                      <Text style={styles.iconLabel}>
+                        {expandedPostId === post.id ? 'Hide Replies' : `${post.replies?.length || 0} Replies`}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                )}
-              </View>
-            ))
+                  {expandedPostId === post.id && (
+                    <View style={styles.repliesSection}>
+                      {post.replies?.map((reply) => (
+                        <View key={reply.id} style={styles.replyBox}>
+                          <Text style={styles.replyUser}>
+                            {reply.user_name}
+                            {reply.user_title === 'Expert' && <Text style={{ color: '#1BB582' }}> • Expert</Text>} • {formatDate(reply.created_at)}
+                          </Text>
+                          <Text style={styles.replyText}>{reply.content}</Text>
+                        </View>
+                      ))}
+                      <View style={styles.replyInputSection}>
+                        <TextInput
+                          placeholder="Write a reply..."
+                          style={styles.replyInput}
+                          value={replyInputs[post.id] || ''}
+                          onChangeText={(text) => handleReplyChange(post.id, text)}
+                        />
+                        <TouchableOpacity
+                          style={styles.sendButton}
+                          onPress={() => handleAddReply(post.id)}
+                        >
+                          <Ionicons name="send" size={20} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })
           )}
         </ScrollView>
-
-        {/* Floating Post Button */}
-        <TouchableOpacity
-          style={styles.floatingButton}
-          onPress={() => setModalVisible(true)}
-        >
+        <TouchableOpacity style={styles.floatingButton} onPress={() => setModalVisible(true)}>
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
-
-        {/* Create Post Modal */}
         <Modal visible={isModalVisible} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -243,6 +292,7 @@ const ForumScreen = () => {
 };
 
 export default ForumScreen;
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F7FBF1' },

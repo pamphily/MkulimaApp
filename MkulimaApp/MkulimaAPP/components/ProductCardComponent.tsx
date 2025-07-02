@@ -18,7 +18,7 @@ type ProductCardProps = {
   productName: string;
   description: string;
   price: number;
-  imageUri?: string; // optional thumbnail
+  imageUri?: string;
   tags?: string[];
   comments?: { id: string; username: string; text: string }[];
   onAddToCart?: () => void;
@@ -42,7 +42,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [newComment, setNewComment] = useState("");
 
-  // Enable LayoutAnimation on Android
   useEffect(() => {
     if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -50,7 +49,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   }, []);
 
   const toggleComments = () => {
-    // Animate layout change
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCommentsExpanded((prev) => !prev);
   };
@@ -62,7 +60,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     setNewComment("");
   };
 
-  // Render a single comment
   const renderCommentItem = ({ item }: { item: { id: string; username: string; text: string } }) => (
     <View style={styles.commentItem}>
       <Text style={styles.commentUser}>{item.username}:</Text>
@@ -72,12 +69,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <View style={styles.cardContainer}>
-      {/* Optional Thumbnail/Image */}
       {imageUri && (
         <Image source={{ uri: imageUri }} style={styles.thumbnail} resizeMode="cover" />
       )}
 
-      {/* Main Info */}
       <View style={styles.infoContainer}>
         <Text style={styles.productName} numberOfLines={2}>
           {productName}
@@ -85,10 +80,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <Text style={styles.description} numberOfLines={3}>
           {description}
         </Text>
-        <Text style={styles.priceText}>${price.toFixed(2)}</Text>
+        <Text style={styles.priceText}>TZS {price.toLocaleString()}</Text>
       </View>
 
-      {/* Action Icons Row */}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.iconButton} onPress={onAddToCart}>
           <Ionicons name="cart-outline" size={24} color="#333" />
@@ -104,7 +98,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Tags */}
       {tags.length > 0 && (
         <View style={styles.tagsContainer}>
           <FlatList
@@ -121,7 +114,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </View>
       )}
 
-      {/* Expand/Collapse Comments Toggle */}
       <TouchableOpacity onPress={toggleComments} style={styles.toggleCommentsButton}>
         <Text style={styles.toggleCommentsText}>
           {commentsExpanded ? "Hide Comments" : `Comments (${comments.length})`}
@@ -133,10 +125,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         />
       </TouchableOpacity>
 
-      {/* Comments Section */}
       {commentsExpanded && (
         <View style={styles.commentsSection}>
-          {/* Existing Comments */}
           {comments.length > 0 ? (
             <FlatList
               data={comments}
@@ -148,7 +138,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <Text style={styles.noCommentsText}>No comments yet.</Text>
           )}
 
-          {/* Add New Comment */}
           <View style={styles.addCommentRow}>
             <TextInput
               style={styles.commentInput}
@@ -176,19 +165,16 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginVertical: 8,
     marginHorizontal: 16,
-    // shadow iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    // elevation Android
     elevation: 3,
   },
   thumbnail: {
     width: "100%",
     height: 180,
-    objectFit: 'cover',
-    
+    objectFit: "cover",
     backgroundColor: "#e0e0e0",
   },
   infoContainer: {
@@ -208,7 +194,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#2e7d32", // bold green
+    color: "#2e7d32",
     marginBottom: 8,
   },
   actionsRow: {
@@ -264,7 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   commentsList: {
-    maxHeight: 150, // limit height so list scrolls if many comments
+    maxHeight: 150,
     marginBottom: 8,
   },
   commentItem: {
@@ -307,7 +293,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "#8B0000",
+    backgroundColor: "#19551B",
     borderRadius: 18,
   },
   postCommentText: {

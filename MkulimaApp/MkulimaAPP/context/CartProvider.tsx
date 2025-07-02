@@ -2,8 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Replace or import your AgriProduct type
-type AgriProduct = {
+export type AgriProduct = {
   id: string;
   productName: string;
   description?: string;
@@ -18,6 +17,13 @@ export type CartItem = {
   quantity: number;
 };
 
+export type LastTransaction = {
+  orderId: string;
+  total: number;
+  timestamp: string;
+  items: CartItem[];
+};
+
 type CartContextType = {
   cartItems: CartItem[];
   addToCart: (product: AgriProduct, qty?: number) => void;
@@ -25,6 +31,8 @@ type CartContextType = {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotalAmount: () => number;
+  lastTransaction: LastTransaction | null;
+  setLastTransaction: (tx: LastTransaction | null) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -41,38 +49,51 @@ type CartProviderProps = {
   children: ReactNode;
 };
 
-const STORAGE_KEY = "@MyApp:cart";
+const STORAGE_CART_KEY = "@MyApp:cart";
+const STORAGE_LAST_TX_KEY = "@MyApp:lastTransaction";
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [lastTransaction, setLastTransaction] = useState<LastTransaction | null>(null);
 
-  // Load cart from AsyncStorage on mount
+  // Load cart and lastTransaction from AsyncStorage on mount
   useEffect(() => {
-    const loadCart = async () => {
+    const loadData = async () => {
       try {
-        const json = await AsyncStorage.getItem(STORAGE_KEY);
-        if (json) {
-          const saved: CartItem[] = JSON.parse(json);
-          setCartItems(saved);
+        const jsonCart = await AsyncStorage.getItem(STORAGE_CART_KEY);
+        if (jsonCart) {
+          setCartItems(JSON.parse(jsonCart));
+        }
+        const jsonTx = await AsyncStorage.getItem(STORAGE_LAST_TX_KEY);
+        if (jsonTx) {
+          setLastTransaction(JSON.parse(jsonTx));
         }
       } catch (e) {
-        console.error("Failed to load cart from storage", e);
+        console.error("Failed to load from storage", e);
       }
     };
-    loadCart();
+    loadData();
   }, []);
 
   // Save cart to AsyncStorage whenever cartItems changes
   useEffect(() => {
-    const saveCart = async () => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems));
-      } catch (e) {
-        console.error("Failed to save cart to storage", e);
-      }
-    };
-    saveCart();
+    AsyncStorage.setItem(STORAGE_CART_KEY, JSON.stringify(cartItems)).catch((e) =>
+      console.error("Failed to save cart", e)
+    );
   }, [cartItems]);
+
+  // Save lastTransaction to AsyncStorage whenever it changes
+  useEffect(() => {
+    if (lastTransaction) {
+      AsyncStorage.setItem(STORAGE_LAST_TX_KEY, JSON.stringify(lastTransaction)).catch((e) =>
+        console.error("Failed to save lastTransaction", e)
+      );
+    } else {
+      AsyncStorage.removeItem(STORAGE_LAST_TX_KEY).catch((e) =>
+        console.error("Failed to remove lastTransaction", e)
+      );
+    }
+  }, [lastTransaction]);
 
   const addToCart = (product: AgriProduct, qty: number = 1) => {
     setCartItems((prev) => {
@@ -96,7 +117,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
-      // Remove item if quantity zero or less
       removeFromCart(productId);
     } else {
       setCartItems((prev) =>
@@ -127,6 +147,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         updateQuantity,
         clearCart,
         getTotalAmount,
+        lastTransaction,
+        setLastTransaction,
       }}
     >
       {children}

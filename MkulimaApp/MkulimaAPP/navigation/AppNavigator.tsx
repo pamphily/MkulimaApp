@@ -75,7 +75,7 @@ const AppNavigator = () => {
   const { authData } = useAuth();
 
   return (
-    <Stack.Navigator initialRouteName="Splash">
+    <Stack.Navigator initialRouteName={authData.token ? "MainTab" : "Splash"}>
       {authData.token ? (
         <>
           <Stack.Screen name="MainTab" component={BottomNavigator} options={{ headerShown: false }} />

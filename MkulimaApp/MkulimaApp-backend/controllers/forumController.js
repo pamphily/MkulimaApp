@@ -6,18 +6,21 @@ exports.getAllPosts = async (req, res) => {
   try {
     const posts = await forumModel.getAllPosts();
 
-    // Fetch and attach replies for each post
-    const postsWithReplies = await Promise.all(
+    // Fetch and attach replies and like count for each post
+    const postsWithRepliesAndLikes = await Promise.all(
       posts.map(async (post) => {
         const replies = await forumModel.getRepliesByPostId(post.id);
+        const likes = await forumModel.getLikeCount(post.id);
+
         return {
           ...post,
           replies,
+          likes, // Total like count
         };
       })
     );
 
-    res.json(postsWithReplies);
+    res.json(postsWithRepliesAndLikes);
   } catch (err) {
     console.error('Error fetching posts:', err);
     res.status(500).json({ error: 'Failed to fetch posts' });

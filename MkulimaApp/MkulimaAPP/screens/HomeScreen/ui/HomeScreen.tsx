@@ -13,6 +13,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
+
 const NUM_COLUMNS = 2;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const HORIZONTAL_PADDING = 20;
@@ -24,15 +25,18 @@ const CARD_WIDTH =
 type Product = {
   id: string;
   title: string;
-  image: string;
+  image: any; // changed to any to accept local require
   stock: number;
 };
+
+// Import local images properly
+const tomatoImage = require("../../../assets/image/tomato.png");
+const carrotImage = require("../../../assets/image/carrot.png");
 
 const HomeScreen = () => {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
-
 
   useEffect(() => {
     setLoading(true);
@@ -54,13 +58,13 @@ const HomeScreen = () => {
       {
         id: "3",
         title: "Tomatoes",
-        image: "../../../assets/image/tomato.png",
+        image: tomatoImage,
         stock: 5,
       },
       {
         id: "4",
         title: "Carrots",
-        image: "../../../../assets/image/carrot.png",
+        image: carrotImage,
         stock: 20,
       },
     ];
@@ -83,7 +87,7 @@ const HomeScreen = () => {
       >
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: item.image }}
+            source={typeof item.image === "string" ? { uri: item.image } : item.image}
             style={styles.cardImage}
             resizeMode="cover"
           />
@@ -118,6 +122,10 @@ const HomeScreen = () => {
         </View>
       </TouchableOpacity>
     );
+  };
+
+  const handleChatNowPress = () => {
+    navigation.navigate("Chatbot"); // navigate to ChatbotScreen
   };
 
   if (loading || products === null) {
@@ -155,8 +163,8 @@ const HomeScreen = () => {
                       Get free support from our{"\n"}customer service chatbot
                       AI{"\n"}support about any inquiries
                     </Text>
-                    <TouchableOpacity style={styles.chatButton}>
-                      <Text style={styles.chatButtonText} onPress={() => handleNavigate('Chatbot')}>Chat Now</Text>
+                    <TouchableOpacity style={styles.chatButton} onPress={handleChatNowPress}>
+                      <Text style={styles.chatButtonText}>Chat Now</Text>
                     </TouchableOpacity>
                   </View>
                   <Image
