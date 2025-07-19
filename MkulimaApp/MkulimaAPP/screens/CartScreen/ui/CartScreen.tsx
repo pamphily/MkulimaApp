@@ -1,21 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  Modal,
-  SafeAreaView,
-  Alert,
-  Pressable,
   Image,
-  GestureResponderEvent,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  PanResponder,
 } from "react-native";
-import { useCart } from "../../../context/CartProvider";
+import { useCart, CartItem, LastTransaction } from "../../../context/CartProvider";
 import { Ionicons } from "@expo/vector-icons";
 import HeaderComponent from "../../../components/HeaderComponent";
-import { PanGestureHandler, State } from "react-native-gesture-handler";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const SWIPE_THRESHOLD = 100;
 
 const CartScreen: React.FC = () => {
   const {
@@ -27,15 +31,81 @@ const CartScreen: React.FC = () => {
     lastTransaction,
     setLastTransaction,
   } = useCart();
-  const [isLoading, setIsLoading] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
 
-  const fakeTransactionAPI = async () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const arrowAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowAnim, { toValue: -10, duration: 800, useNativeDriver: true }),
+        Animated.timing(arrowAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const openModal = () => {
+    setModalVisible(true);
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(translateY, {
+      toValue: SCREEN_HEIGHT,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setModalVisible(false);
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > SWIPE_THRESHOLD) {
+          closeModal();
+        } else {
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const fakeTransactionAPI = async (orderPayload: any): Promise<{ success: boolean; orderId?: string; message?: string }> => {
+    console.log("Simulating transaction with payload:", orderPayload);
     await new Promise((res) => setTimeout(res, 1500));
-    return {
-      success: true,
-      orderId: `ORD-${Math.floor(Math.random() * 1000000)}`,
-    };
+
+    const success = Math.random() > 0.2;
+    if (success) {
+      return {
+        success: true,
+        orderId: `ORD-${Math.floor(Math.random() * 1000000)}`,
+      };
+    } else {
+      return {
+        success: false,
+        message: "Demo transaction failed. Try again.",
+      };
+    }
   };
 
   const handleCheckout = async () => {
@@ -44,105 +114,180 @@ const CartScreen: React.FC = () => {
       return;
     }
 
-    const total = getTotalAmount();
-    const timestamp = new Date().toISOString();
+    const orderPayload = {
+      items: cartItems.map((item) => ({
+        productId: item.product.id,
+        name: item.product.productName,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+      })),
+      total: getTotalAmount(),
+      timestamp: new Date().toISOString(),
+      paymentMethod: "demo",
+    };
 
     try {
       setIsLoading(true);
-      const response = await fakeTransactionAPI();
+      const response = await fakeTransactionAPI(orderPayload);
       setIsLoading(false);
 
       if (response.success) {
-        const tx = {
+        const tx: LastTransaction = {
           orderId: response.orderId!,
+          total: orderPayload.total,
+          timestamp: orderPayload.timestamp,
           items: cartItems,
-          total,
-          timestamp,
         };
         setLastTransaction(tx);
         clearCart();
-        setShowReceipt(true);
+        openModal();
       } else {
-        Alert.alert("Transaction failed", "Try again.");
+        Alert.alert("Transaction Failed", response.message || "Something went wrong.");
       }
     } catch (err) {
       setIsLoading(false);
-      Alert.alert("Error", "Transaction failed.");
+      Alert.alert("Error", "Failed to process transaction.");
     }
   };
 
-  const renderItem = ({ item }: any) => {
+  const ReceiptModal = () => {
+    if (!lastTransaction) return null;
+    return (
+      <Animated.View
+        style={[styles.modalContainer, { transform: [{ translateY }] }]}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.modalHeader}>
+          <View style={styles.modalDragHandle} />
+          <Text style={styles.modalTitle}>Receipt</Text>
+          <TouchableOpacity onPress={closeModal}>
+            <Ionicons name="close" size={28} color="#333" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.receiptBody}>
+          <Text style={styles.receiptText}>Order ID: {lastTransaction.orderId}</Text>
+          <Text style={styles.receiptText}>Date: {new Date(lastTransaction.timestamp).toLocaleString()}</Text>
+          <Text style={[styles.receiptText, { fontWeight: "700", marginTop: 12 }]}>Items:</Text>
+          {lastTransaction.items.map(({ product, quantity }) => (
+            <View key={product.id} style={styles.receiptItem}>
+              <Text>{product.productName} x {quantity}</Text>
+              <Text>TZS {(product.price * quantity).toFixed(2)}</Text>
+            </View>
+          ))}
+          <View style={styles.receiptTotal}>
+            <Text style={styles.receiptTotalText}>Total:</Text>
+            <Text style={styles.receiptTotalText}>TZS {lastTransaction.total.toFixed(2)}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const renderItem = ({ item }: { item: CartItem }) => {
     const { product, quantity } = item;
+    const subtotal = product.price * quantity;
+
     return (
       <View style={styles.itemContainer}>
-        <Text style={styles.productName}>{product.productName}</Text>
-        <Text>Qty: {quantity}</Text>
-        <Text>Price: TZS {product.price.toFixed(2)}</Text>
+        {product.imageUri ? (
+          <Image source={{ uri: product.imageUri }} style={styles.thumbnail} />
+        ) : (
+          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+            <Ionicons name="image-outline" size={32} color="#ccc" />
+          </View>
+        )}
+        <View style={styles.infoContainer}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.productName}
+          </Text>
+          <Text style={styles.priceText}>TZS {product.price.toFixed(2)}</Text>
+          <View style={styles.qtyContainer}>
+            <TouchableOpacity
+              onPress={() => {
+                if (quantity > 1) updateQuantity(product.id, quantity - 1);
+                else
+                  Alert.alert("Remove Item", "Quantity will be zero. Remove item?", [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Remove",
+                      style: "destructive",
+                      onPress: () => removeFromCart(product.id),
+                    },
+                  ]);
+              }}
+            >
+              <Ionicons name="remove-circle-outline" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.qtyText}>{quantity}</Text>
+            <TouchableOpacity onPress={() => updateQuantity(product.id, quantity + 1)}>
+              <Ionicons name="add-circle-outline" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.subtotalContainer}>
+          <Text style={styles.subtotalText}>TZS {subtotal.toFixed(2)}</Text>
+          <TouchableOpacity onPress={() => removeFromCart(product.id)}>
+            <Ionicons name="trash-outline" size={24} color="#e53935" />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
 
-  const renderReceipt = () => {
-    if (!lastTransaction) return null;
-
-    return (
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showReceipt}
-        onRequestClose={() => setShowReceipt(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowReceipt(false)}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.receiptTitle}>Receipt</Text>
-            <Text>Order ID: {lastTransaction.orderId}</Text>
-            <Text>Date: {new Date(lastTransaction.timestamp).toLocaleString()}</Text>
-            <FlatList
-              data={lastTransaction.items}
-              keyExtractor={(item) => item.product.id}
-              renderItem={({ item }) => (
-                <View style={styles.itemRow}>
-                  <Text style={styles.itemText}>{item.product.productName}</Text>
-                  <Text style={styles.itemText}>
-                    {item.quantity} x TZS {item.product.price}
-                  </Text>
-                </View>
-              )}
-            />
-            <Text style={styles.totalText}>Total: TZS {lastTransaction.total.toFixed(2)}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setShowReceipt(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
-    );
-  };
+  const totalAmount = getTotalAmount();
 
   return (
     <SafeAreaView style={styles.container}>
-      <HeaderComponent title="My Cart" />
-      {renderReceipt()}
+      <View style={styles.headerWrapper}>
+        <HeaderComponent title="My Cart" />
+      </View>
 
       {cartItems.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text>Your cart is empty.</Text>
+          <Text style={styles.emptyText}>Your cart is empty.</Text>
           {lastTransaction && (
-            <TouchableOpacity onPress={() => setShowReceipt(true)}>
-              <Text style={styles.linkText}>View Last Receipt</Text>
+            <TouchableOpacity onPress={openModal} style={styles.viewReceiptButton}>
+              <Text style={{ color: "#2e7d32" }}>View Last Receipt</Text>
             </TouchableOpacity>
           )}
         </View>
       ) : (
         <>
-          <FlatList data={cartItems} keyExtractor={(item) => item.product.id} renderItem={renderItem} />
+          <FlatList
+            data={cartItems}
+            keyExtractor={(item) => item.product.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContainer}
+          />
           <View style={styles.footer}>
-            <Text>Total: TZS {getTotalAmount().toFixed(2)}</Text>
-            <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout} disabled={isLoading}>
-              <Text style={styles.checkoutText}>{isLoading ? "Processing..." : "Checkout"}</Text>
+            <Text style={styles.totalLabel}>Total:</Text>
+            <Text style={styles.totalAmount}>TZS {totalAmount.toFixed(2)}</Text>
+            <TouchableOpacity
+              style={[styles.checkoutButton, isLoading && { backgroundColor: "#aaa" }]}
+              onPress={handleCheckout}
+              disabled={isLoading}
+            >
+              <Text style={styles.checkoutText}>
+                {isLoading ? "Processing..." : "Proceed to Checkout"}
+              </Text>
             </TouchableOpacity>
           </View>
         </>
+      )}
+
+      {modalVisible && <ReceiptModal />}
+
+      {!modalVisible && (
+        <Animated.View
+          style={[
+            styles.swipeArrow,
+            { transform: [{ translateY: arrowAnim }] },
+          ]}
+        >
+          <Ionicons name="chevron-up" size={32} color="#2e7d32" />
+          <Text style={styles.swipeText}>Swipe up to view last receipt</Text>
+        </Animated.View>
       )}
     </SafeAreaView>
   );

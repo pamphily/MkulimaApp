@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
+import * as ImagePicker from 'expo-image-picker';
 import API_BASE from '../../api/api';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useRoute } from '@react-navigation/native';
@@ -23,7 +24,8 @@ interface Message {
   id?: number;
   sender_id: number;
   receiver_id: number;
-  content: string;
+  content?: string;
+  image?: string;
   created_at?: string;
 }
 
@@ -59,6 +61,7 @@ const ChatScreen = () => {
             sender_id: msg.senderId,
             receiver_id: msg.receiverId,
             content: msg.message,
+            image: msg.image,
             created_at: msg.timestamp,
           };
           setMessages((prev) => [...prev, newMsg]);
@@ -93,13 +96,14 @@ const ChatScreen = () => {
     }
   };
 
-  const sendMessage = async () => {
-    if (!messageText.trim()) return;
+  const sendMessage = async (imageData?: string) => {
+    if (!messageText.trim() && !imageData) return;
 
     const message = {
       senderId: currentUserId!,
       receiverId: receiver.id,
       message: messageText.trim(),
+      image: imageData || null,
     };
 
     try {
@@ -110,12 +114,14 @@ const ChatScreen = () => {
       });
 
       socket.emit('sendMessage', message);
+
       setMessages((prev) => [
         ...prev,
         {
           sender_id: currentUserId!,
           receiver_id: receiver.id,
           content: message.message,
+          image: message.image || undefined,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -125,11 +131,31 @@ const ChatScreen = () => {
     }
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      sendMessage(base64Image);
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwn = item.sender_id === currentUserId;
     return (
       <View style={[styles.messageContainer, isOwn ? styles.sent : styles.received]}>
-        <Text style={styles.messageText}>{item.content}</Text>
+        {item.image && (
+          <Image source={{ uri: item.image }} style={styles.messageImage} />
+        )}
+        {item.content ? (
+          <Text style={[styles.messageText, { color: isOwn ? '#fff' : '#000' }]}>
+            {item.content}
+          </Text>
+        ) : null}
         <Text style={styles.timestamp}>{item.created_at?.slice(11, 16)}</Text>
       </View>
     );
@@ -139,7 +165,6 @@ const ChatScreen = () => {
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
-          {/* Avatar + Name */}
           <View style={styles.avatarHeader}>
             <Image
               source={require('../../assets/default-avatar.png')}
@@ -153,7 +178,7 @@ const ChatScreen = () => {
             data={messages}
             keyExtractor={(item, index) => index.toString()}
             renderItem={renderMessage}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 80 }}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
 
@@ -162,6 +187,9 @@ const ChatScreen = () => {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 32 : 60}
             style={styles.inputContainer}
           >
+            <TouchableOpacity onPress={pickImage}>
+              <Ionicons name="image" size={28} color="#19551B" />
+            </TouchableOpacity>
             <TextInput
               style={styles.input}
               placeholder="Andika ujumbe wako..."
@@ -169,7 +197,7 @@ const ChatScreen = () => {
               value={messageText}
               onChangeText={setMessageText}
             />
-            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <TouchableOpacity style={styles.sendButton} onPress={() => sendMessage()}>
               <Ionicons name="send" size={24} color="white" />
             </TouchableOpacity>
           </KeyboardAvoidingView>
@@ -217,39 +245,46 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   messageText: {
-    color: '#fff',
+    fontSize: 15,
+    marginTop: 4,
   },
   timestamp: {
-    color: '#ccc',
+    color: '#999',
     fontSize: 10,
     marginTop: 4,
     textAlign: 'right',
   },
-inputContainer: {
-  flexDirection: 'row',
-  paddingHorizontal: 10,
-  paddingVertical: 8,
-  backgroundColor: '#fff',
-  borderTopColor: '#ddd',
-  borderTopWidth: 1,
-  alignItems: 'center',
-},
-
-input: {
-  flex: 1,
-  borderRadius: 25,
-  paddingHorizontal: 15,
-  backgroundColor: '#f1f7e9',
-  color: '#000',
-  fontSize: 16,
-  height: Platform.OS === 'android' ? 60 : 48, // This raises the input
-},
-
+  messageImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  inputContainer: {
+    position: 'absolute',
+    bottom: 0,
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderTopColor: '#ddd',
+    borderTopWidth: 1,
+    alignItems: 'center',
+    width: '100%',
+  },
+  input: {
+    flex: 1,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    backgroundColor: '#f1f7e9',
+    color: '#000',
+    fontSize: 16,
+    height: Platform.OS === 'android' ? 60 : 48,
+    marginHorizontal: 10,
+  },
   sendButton: {
     backgroundColor: '#19551B',
     borderRadius: 25,
     padding: 10,
-    marginLeft: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },

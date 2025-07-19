@@ -1,4 +1,3 @@
-// ChatbotScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,7 +14,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import sarufi from 'sarufi';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -23,7 +21,7 @@ interface ChatMessage {
 }
 
 const BOT_ID = 6062;
-sarufi.login({ api_key: 'eee785909d281f837418de3da1dac0216e550f028e4e65b795d1ea044297725d' });
+const SARUFI_API_KEY = 'eee785909d281f837418de3da1dac0216e550f028e4e65b795d1ea044297725d';
 
 const ChatbotScreen = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -31,7 +29,9 @@ const ChatbotScreen = () => {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('chat_messages').then(saved => saved && setMessages(JSON.parse(saved)));
+    AsyncStorage.getItem('chat_messages').then(saved => {
+      if (saved) setMessages(JSON.parse(saved));
+    });
   }, []);
 
   useEffect(() => {
@@ -40,6 +40,7 @@ const ChatbotScreen = () => {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
     const userMsg = { sender: 'user', text: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -47,8 +48,27 @@ const ChatbotScreen = () => {
     setTyping(true);
 
     try {
-      const res = await sarufi.chat({ bot_id: BOT_ID, message: input });
-      const botText = Array.isArray(res.message) ? res.message.join(' ') : res.message;
+      const userId = await AsyncStorage.getItem('user_id') || 'default-user';
+
+      const response = await fetch('https://api.sarufi.io/api/v1/chat', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${SARUFI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bot_id: BOT_ID,
+          user_id: userId,
+          message: input,
+        }),
+      });
+
+      const data = await response.json();
+
+      const botText = Array.isArray(data.message)
+        ? data.message.join(' ')
+        : data.message || 'Samahani, siwezi kujibu sasa hivi.';
+
       setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
     } catch (e) {
       console.error(e);
@@ -91,7 +111,10 @@ const ChatbotScreen = () => {
       )}
 
       {/* Input Box */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+      >
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}

@@ -1,5 +1,5 @@
 const users = {}; // Maps userId → socket.id
-const db = require('./db'); // Ensure your PostgreSQL db connection is set up here
+const db = require('./db'); // PostgreSQL connection
 
 module.exports = (io) => {
   io.on('connection', (socket) => {
@@ -24,36 +24,53 @@ module.exports = (io) => {
       console.log(`🟢 User ${userId} registered on socket ${socket.id}`);
     });
 
-    // Handle sending a private message
-    socket.on('sendMessage', async ({ senderId, receiverId, message }) => {
+    // Handle sending a private message (text or image)
+    socket.on('sendMessage', async ({ senderId, receiverId, message, image }) => {
+      const timestamp = new Date().toISOString();
       const receiverSocketId = users[receiverId];
+      const imageBuffer = image ? Buffer.from(image, 'base64') : null;
 
-      // Emit message in real-time to receiver if online
+      // Emit real-time to receiver if online
       if (receiverSocketId) {
         io.to(receiverSocketId).emit('receiveMessage', {
           senderId,
           receiverId,
           message,
-          timestamp: new Date().toISOString(),
+          image,
+          timestamp,
         });
         console.log(`✉️ Real-time message sent from ${senderId} to ${receiverId}`);
       } else {
         console.log(`⚠️ Receiver ${receiverId} not connected`);
       }
 
-      // Save message in database
+      // Save message in messages table
       try {
         await db.query(
-          'INSERT INTO messages (sender_id, receiver_id, message) VALUES ($1, $2, $3)',
-          [senderId, receiverId, message]
+          `INSERT INTO messages (sender_id, receiver_id, message, image, timestamp)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [senderId, receiverId, message, imageBuffer, timestamp]
         );
         console.log('✅ Message saved to database');
       } catch (err) {
         console.error('❌ Failed to save message:', err);
       }
+
+      // Update or insert into recent_chats
+      try {
+        await db.query(`
+          INSERT INTO recent_chats (user1_id, user2_id, last_message, last_message_time)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (user1_id, user2_id)
+          DO UPDATE SET last_message = $3, last_message_time = $4
+        `, [senderId, receiverId, message || '[Image]', timestamp]);
+        console.log('🕓 Recent chat updated');
+      } catch (err) {
+        console.error('❌ Failed to update recent chats:', err);
+      }
     });
 
-    // Fallback for public broadcasting (optional)
+    // Fallback public broadcast (optional)
     socket.on('newMessage', (msg) => {
       console.log('📡 Broadcasting public message:', msg);
       io.emit('newMessage', msg);

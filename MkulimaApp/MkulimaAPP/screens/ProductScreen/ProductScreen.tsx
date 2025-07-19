@@ -82,7 +82,7 @@ const demoAgriProducts: AgriProduct[] = [
     productName: "Potato Seed Tubers",
     description: "Certified seed tubers for quality potato harvest.",
     price: 25000,
-    imageUri: "https://via.placeholder.com/600x400.png?text=Potato+Seed+Tubers",
+    imageUri: "https://images.unsplash.com/photo-1709963421370-98407fa9126e?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: ["Seeds", "Vegetables"],
     comments: [],
   },
@@ -100,7 +100,7 @@ const demoAgriProducts: AgriProduct[] = [
     productName: "Tomatoes",
     description: "Juicy and red ripe tomatoes directly from farm.",
     price: 8000,
-    imageUri: "https://via.placeholder.com/600x400.png?text=Tomatoes",
+    imageUri: "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: ["Vegetables"],
     comments: [],
   }

@@ -1,18 +1,8 @@
+// updated ChatListScreen.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  SafeAreaView,
-  Modal,
-  TextInput,
-  ScrollView,
-  Image,
-  Pressable,
-  Keyboard
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
+  SafeAreaView, Modal, TextInput, ScrollView, Image, Pressable, Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,8 +13,10 @@ interface User {
   id: number;
   name: string;
   role?: string;
+  avatar?: string;
   lastMessage?: string;
   lastMessageTime?: string;
+  unique_id?: string;
 }
 
 const ChatListScreen = () => {
@@ -93,9 +85,14 @@ const ChatListScreen = () => {
     setFilteredUsers(filtered);
   };
 
+  const getUniqueChatId = (id1: number, id2: number) => {
+    return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+  };
+
   const handleUserSelect = (user: User) => {
     setModalVisible(false);
-    navigation.navigate('ChatScreen', { user });
+    const unique_id = getUniqueChatId(currentUserId!, user.id);
+    navigation.navigate('ChatScreen', { user, unique_id });
   };
 
   const formatTime = (time: string) => {
@@ -106,7 +103,11 @@ const ChatListScreen = () => {
   const renderUserCard = (user: User) => (
     <TouchableOpacity style={styles.userCard} onPress={() => handleUserSelect(user)}>
       <Image
-        source={require('../../assets/default-avatar.png')}
+        source={
+          user.avatar
+            ? { uri: `${API_BASE}/${user.avatar}` }
+            : require('../../assets/default-avatar.png')
+        }
         style={styles.avatar}
       />
       <View style={{ flex: 1, marginLeft: 10 }}>
@@ -130,13 +131,12 @@ const ChatListScreen = () => {
       ) : (
         <FlatList
           data={recentChats}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.unique_id || item.id.toString()}
           renderItem={({ item }) => renderUserCard(item)}
           contentContainerStyle={{ paddingBottom: 90 }}
         />
       )}
 
-      {/* Floating + Button */}
       <TouchableOpacity
         style={styles.plusButton}
         onPress={() => {
@@ -147,7 +147,6 @@ const ChatListScreen = () => {
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
-      {/* Popup Modal */}
       <Modal
         visible={modalVisible}
         transparent

@@ -174,7 +174,7 @@ const HomeScreen = () => {
                   />
                 </View>
               </View>
-              <Text style={styles.sectionTitle}>Featured Content</Text>
+              <Text style={styles.sectionTitle}>Featured Products</Text>
             </>
           }
         />

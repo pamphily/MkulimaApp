@@ -21,6 +21,7 @@ import { useEducation } from '../../../context/EducationProvider';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
+
 interface Lesson {
   id: string;
   title: string;
@@ -45,7 +46,7 @@ const demoCourses: Course[] = [
     id: 'c1',
     title: 'Introduction to Sustainable Farming',
     description: 'Learn principles of sustainable agriculture to improve yield and protect environment.',
-    imageUri: 'https://via.placeholder.com/300x200.png?text=Sustainable+Farming',
+    imageUri: 'https://media.licdn.com/dms/image/v2/D4E22AQG7LJaNQBbJjg/feedshare-shrink_800/feedshare-shrink_800/0/1690959416569?e=2147483647&v=beta&t=h7buBcGTEqqJb9OVam6AsuHFJjhPHR8od31Sdw_ttVQ',
     category: 'Sustainability',
     lessons: [
       { id: 'l1', title: 'What is Sustainable Farming?', type: 'text', contentText: 'Sustainable farming is ...' },
@@ -57,7 +58,7 @@ const demoCourses: Course[] = [
     id: 'c2',
     title: 'Crop Rotation Techniques',
     description: 'Understand crop rotation and its benefits.',
-    imageUri: 'https://via.placeholder.com/300x200.png?text=Crop+Rotation',
+    imageUri: 'https://cropcirclefarms.com/images/crop-rotation.png',
     category: 'Crop Management',
     lessons: [
       { id: 'l1', title: 'Basics of Crop Rotation', type: 'text', contentText: 'Crop rotation means ...' },
@@ -69,7 +70,7 @@ const demoCourses: Course[] = [
     id: 'c3',
     title: 'Organic Pest Control',
     description: 'Natural methods to manage pests without harmful chemicals.',
-    imageUri: 'https://via.placeholder.com/300x200.png?text=Organic+Pest+Control',
+    imageUri: 'https://paidepo.com/cdn/shop/articles/Natural_Pest_Control.png?v=1625029647',
     category: 'Pest Management',
     lessons: [
       { id: 'l1', title: 'Common Pests and Identification', type: 'text', contentText: 'Pests include ...' },
@@ -81,7 +82,7 @@ const demoCourses: Course[] = [
     id: 'c4',
     title: 'Soil Testing Basics',
     description: 'Learn how to test soil pH and nutrients for optimal yield.',
-    imageUri: 'https://via.placeholder.com/300x200.png?text=Soil+Testing',
+    imageUri: 'https://farmbizafrica.com/wp-content/uploads/2024/11/soilcares_package-1-1-1.jpg',
     category: 'Soil Management',
     lessons: [
       { id: 'l1', title: 'Why Test Soil?', type: 'text', contentText: 'Testing soil helps ...' },
@@ -90,6 +91,7 @@ const demoCourses: Course[] = [
     price: 49.99,
   },
 ];
+
 
 type CourseListNavigationProp = StackNavigationProp<EducationStackParamList, 'CourseList'>;
 
